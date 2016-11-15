@@ -149,7 +149,7 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
   gStyle->SetGridColor(16);
 
   //get list of all pedestal tables, use pedestal run with closest run number 
-  TString peddir="/afs/cern.ch/user/r/rheller/work/HcalPedestalTuning/HcalPedestalTable/pedestals/";
+  TString peddir="pedestals/";
   TSystemDirectory pdir(peddir, peddir);
   TList *files = pdir.GetListOfFiles();
   TString pedname;
