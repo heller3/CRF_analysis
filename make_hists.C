@@ -144,7 +144,7 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 
   if(collisions && calib){ cout<< "ERROR calib and collisions turned on "<<endl; return;}
   
-  // if(collisions)  TGaxis::SetMaxDigits(3);
+  if(collisions)  TGaxis::SetMaxDigits(6);
   int run_int = runnumber.Atoi();
   gStyle->SetGridColor(16);
 
@@ -193,7 +193,8 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 
    
   TString rootfile = inputdir+"outputFile_USC_"+runnum+".root";
-  if(collisions) rootfile= "/afs/cern.ch/work/r/rheller/CMSSW_8_0_20/src/HCALPFG/HcalTupleMaker/ZeroBias/Run"+runnum+".root";
+  if(collisions) rootfile="/afs/cern.ch/work/r/rheller/test/CMSSW_8_0_20/src/HCALPFG/HcalTupleMaker/USC/HcalNZS_"+runnum+".root";
+		   // "/afs/cern.ch/work/r/rheller/CMSSW_8_0_20/src/HCALPFG/HcalTupleMaker/ZeroBias/Run"+runnum+".root";
   //inputdir+"outputFile_collisions_"+runnum+".root";
   if(calib) rootfile = inputdir+"outputFile_calib_"+runnum+".root";
   cout<<"Opening "+rootfile<<endl;
@@ -439,6 +440,59 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 
     //Remember that iEta = fiber num - 2, so iEta 14 is channel 16
 
+    TH1F* petpen[6];
+    petpen[0]=h1_fC[19][3];
+    petpen[1]=h1_fC[19][5];
+    petpen[2]=h1_fC[12][0];
+    petpen[3]=h1_fC[19][4];
+    petpen[4]=h1_fC[5][5];
+    petpen[5]=h1_fC[2][3];
+
+    TH1F* ped_petpen[6];
+    ped_petpen[0]=h1_ped[19][3];
+    ped_petpen[1]=h1_ped[19][5];
+    ped_petpen[2]=h1_ped[12][0];
+    ped_petpen[3]=h1_ped[19][4];
+    ped_petpen[4]=h1_ped[5][5];
+    ped_petpen[5]=h1_ped[2][3];
+
+
+    TH1F* petpen2[6];
+    petpen2[0]=h1_fC[12][1];
+    petpen2[1]=h1_fC[19][1];
+    petpen2[2]=h1_fC[19][2];
+    petpen2[3]=h1_fC[18][5];
+    petpen2[4]=h1_fC[3][0];
+    petpen2[5]=h1_fC[1][0];
+
+    TH1F* ped_petpen2[6];
+    ped_petpen2[0]=h1_ped[12][1];
+    ped_petpen2[1]=h1_ped[19][1];
+    ped_petpen2[2]=h1_ped[19][2];
+    ped_petpen2[3]=h1_ped[18][5];
+    ped_petpen2[4]=h1_ped[3][0];
+    ped_petpen2[5]=h1_ped[1][0];
+
+
+    TH1F* other[6];
+    other[0]=h1_fC[17][1]; //scintillator X
+    other[1]=h1_fC[15][5]; //LS
+    other[2]=h1_fC[14][2]; //LS
+    other[3]=h1_fC[16][5]; //EJ200S
+    other[4]=h1_fC[13][5]; //EJ200S
+    other[5]=h1_fC[7][4];  //EJ200S
+
+    TH1F* ped_other[6];
+    ped_other[0]=h1_ped[17][1]; //scintillator X
+    ped_other[1]=h1_ped[15][5]; //LS
+    ped_other[2]=h1_ped[14][2]; //LS
+    ped_other[3]=h1_ped[16][5]; //EJ200S
+    ped_other[4]=h1_ped[13][5]; //EJ200S
+    ped_other[5]=h1_ped[7][4];  //EJ200S
+
+
+
+
     //SCSN81-S channels in RM2, close to beam
     TH1F* rm2_close[6];
     rm2_close[0]=h1_fC[14][5];
@@ -574,6 +628,9 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 
 
     //Plot all of these groups
+    plot_pulse(petpen,ped_petpen,"petpen");
+    plot_pulse(petpen2,ped_petpen2,"petpen2");
+    plot_pulse(other,ped_other,"other");
     plot_pulse(fC_empty_ref_beam,ped_empty_ref_beam,"empty_ref_beam");
     plot_pulse(fC_ej260,ped_ej260,"EJ260S");
     plot_pulse(rm2_close,pedrm2_close,"rm2_close");
@@ -802,14 +859,16 @@ void plot_distribution(TH1F* h1_ieta[], int ieta, TString type){
       TString u= Form("Underflow: %.0f",h1_ieta[iphi]->GetBinContent(0));
 
    
-      if(type.Contains("Energy") && !collisions){
+      if(type.Contains("Energy")){
 	float xmax =  h1_ieta[iphi]->GetBinCenter(h1_ieta[iphi]->FindLastBinAbove(0)+1);
-	if(xmax>900) h1_ieta[iphi]->Rebin();
-       	if(xmax>2000) h1_ieta[iphi]->Rebin();
-       	if(xmax>3000) h1_ieta[iphi]->Rebin();
+	if(!collisions){
+	  if(xmax>900) h1_ieta[iphi]->Rebin();
+	  if(xmax>2000) h1_ieta[iphi]->Rebin();
+	  if(xmax>3000) h1_ieta[iphi]->Rebin();}
 	h1_ieta[iphi]->GetXaxis()->SetRangeUser(0,xmax);
       }
-
+      h1_ieta[iphi]->GetXaxis()->SetNdivisions(505,"X");
+     
 
       if(h1_ieta[iphi]->GetBinContent(0) > 0) h1_ieta[iphi]->SetBinContent(1,h1_ieta[iphi]->GetBinContent(0)+h1_ieta[iphi]->GetBinContent(1));
       if(h1_ieta[iphi]->GetBinContent(h1_ieta[iphi]->GetNbinsX()+1) > 0) h1_ieta[iphi]->SetBinContent(h1_ieta[iphi]->GetNbinsX(),h1_ieta[iphi]->GetBinContent(h1_ieta[iphi]->GetNbinsX()+1)+h1_ieta[iphi]->GetBinContent(h1_ieta[iphi]->GetNbinsX()));
