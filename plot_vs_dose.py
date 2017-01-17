@@ -6,13 +6,15 @@ from array import array
 
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetLabelFont(42,"xyz")
-ROOT.gStyle.SetLabelSize(0.04,"xyz")
+ROOT.gStyle.SetLabelSize(0.05,"xyz")
 #ROOT.gStyle.SetTitleFont(42)
 ROOT.gStyle.SetTitleFont(42,"xyz")
 ROOT.gStyle.SetTitleFont(42,"t")
 #ROOT.gStyle.SetTitleSize(0.05)
-ROOT.gStyle.SetTitleSize(0.05,"xyz")
+ROOT.gStyle.SetTitleSize(0.06,"xyz")
+ROOT.gStyle.SetTitleSize(0.06,"t")
 ROOT.gStyle.SetPadBottomMargin(0.14)
+ROOT.gStyle.SetPadLeftMargin(0.14)
 ROOT.gStyle.SetTitleOffset(1,'y')
 #ROOT.gStyle.SetLegendTextSize(0.05)
 ROOT.gStyle.SetGridStyle(3)
@@ -44,6 +46,11 @@ ifb = True
 
 #to enable shunt correction
 fixshunt=False
+
+## to plot damage or recovery
+recovery=False
+
+
 shuntval = 3.87
 
 #to apply a cut to runs considered (not ironed out yet)
@@ -57,6 +64,7 @@ else:
     variation = int(sys.argv[1])
     if "ped" in sys.argv[2]: laser = False
     if "Mrad" in sys.argv[3]: ifb = False
+    if "recovery" in sys.argv[3]: recovery=True
 
 if len(sys.argv) > 4:
     if "unshunt" in sys.argv[4]: fixshunt=True
@@ -75,18 +83,39 @@ if len(sys.argv) > 5:
 
 #lasers
 if laser:
-    histname = "h1_energy_ieta"
-    runlist = [280662,281740,282046,282368,282369,282779,282933,283403,283512,283660,283803, 283842, 283918, 283973, 284127]
-    lumi =    [0.    ,1.1   ,2.31   ,2.70  ,2.72,  3.29, 4.01  ,5.90  ,6.8  ,7.0   ,7.24  , 7.66  , 8.81  , 9.53  , 10.0 ]
+    histname = "h1_energy_laserconst_ieta"
+    if not recovery:
+        runlist = [280662,281740,282046,282368,282369,282779,282933,283403,283512,283660,283803, 283842, 283973, 284127]
+        lumi =    [0.    ,1.1   ,2.31   ,2.70  ,2.72,  3.29, 4.01  ,5.90  ,6.8  ,7.0   ,7.24  , 7.66  , 9.53  , 10.0 ]
+
+    else:
+        runlist = [280662, 284127, 284189, 284342, 284493,285227,285356,  286185, 286395 ]
+        lumi =    [-100, 2     , 3       ,  6  , 8     ,18  ,    20 ,  35    , 37     ]
+        # 284248, 284314,
+         #5     ,   6   ,
+   # runlist = [280662,281740,282046,282368,282369,282779,282933,283403,283512,283660,283803, 283842, 283918, 283973, 284127,284284,284342,284493,285356,286185]
+    #lumi =    [0.    ,1.1   ,2.31   ,2.70  ,2.72,  3.29, 4.01  ,5.90  ,6.8  ,7.0   ,7.24  , 7.66  , 8.81  , 9.53  , 10.0    ,11   , 12    , 13   ,14    ,15   ]
+    
     #lumi =    [0.    ,1.1   ,2.1   ,2.49  ,2.51  ,  3.  ,3.73  ,5.61  ,6.52  ,6.73  ,6.96  , 7.37  , 8.53  , 9.25] original lumi calculation
 
+
+    ## currently exclude 283918 since it does not have a matching pedestal measurement
+    
 #pedestals
 else:
     histname = "h1_energy_const_ieta"
-    runlist = [280646,281734,282040,282314,282772,282927,283321,283397,283522, 283662,283807, 283846, 283977, 284123]
-    lumi =    [0.    ,1.1   ,2.31   ,2.71,  3.29, 4.01  , 5.44 ,5.90  ,6.8  ,7.0   ,7.24  , 7.66  , 9.53  , 10.0 ]
-    #lumi =    [0.    ,1.1   ,2.1   ,2.5 ,  3.,    3.73  ,5.16  ,5.61  , 6.52  , 6.73  ,6.96  , 7.37  , 9.25]
-    shunted = [0     ,0     ,1     ,1    ,1  ,     1    ,1     ,1     , 1      ,1      ,0     , 0    , 0] # indicates whether shunt was activated for run or not
+    if not recovery:
+        runlist = [280646,281734,282040,282314,282772,282927,283321,283397,283522, 283662,283807, 283846, 283977, 284123]
+        lumi =    [0.    ,1.1   ,2.31   ,2.71,  3.29, 4.01  , 5.44 ,5.90  ,6.8  ,7.0   ,7.24  , 7.66  , 9.53  , 10.0 ]
+        shunted = [0     ,0     ,1     ,1    ,1  ,     1    ,1     ,1     , 1      ,1      ,0     , 0    , 0,     0]
+
+    ## recovery set
+    else:
+        runlist = [284123, 284185, 284249, 284306, 284337, 284487,285222,285347,  286184, 286394 ]
+        lumi =    [2     , 3     , 5     ,   6   ,  6.3  , 8     ,18  ,    20 ,  35    , 37     ] ##285841 at 30 days, 286457 is 38 284876 is 13 days
+    
+    #lumi =    [0.    ,1.1   ,2.1   ,2.5 ,  3.,    3.73  ,5.16  ,5.61  , 6.52  , 6.73  ,6.96  , 7.37  , 9.25] original lumi calculation
+    # indicates whether shunt was activated for run or not
 
 
 legtype = "dist"    
@@ -95,7 +124,7 @@ if fixshunt: outname = outname+"_shunt_corr"
 if applycut and laser: outname = outname+"_cut"
         
 if len(runlist) > 10:
-    outname = outname+"_v11_"
+    outname = outname+"_v14_"
 
 
 #### Define which set of channels to compare ("variation"), their positions and a name for the set
@@ -229,6 +258,39 @@ if variation==15:
     graphlabel = ["Ref","SCSN81-S","SCSN81-S","SCSN81-S","SCSN81-S","EJ260-S"]
 
 
+if variation==16:
+    name="EJ200_LS"
+    title = "Other"
+    channels= [(16,5),(19,1),(16,2),(18,5),(15,5)]
+    positions=["Ref","1-2","3-3","1-1","3-2"]
+    legtype = "mat"
+    graphlabel = ["Ref","Scintillator X","LS","EJ200-S","EJ200-S"]    
+
+if variation==17:
+    name="petpen"
+    title = "PET/PEN/PTP"
+    channels= [(16,5),(21,3),(21,5),(21,1),(21,2)]
+    positions=["Ref","1-2","1-2","1-1","1-1"]
+    legtype = "mat"
+    graphlabel = ["Ref","PEN","PEN","PTP","PTP"]    
+
+if variation==18:
+    name="SCSN81F"
+    title = "SCSN81-F"
+    channels= [(16,5),(4,3),(15,2),(15,3),(15,0)]
+    positions=["Ref","1-3","2-3","2-3","3-3"]
+    #legtype = "mat"
+    graphlabel = ["Ref","PEN","PEN","PTP","PTP"]    
+    
+if variation==19:
+    name="bright_variety"
+    title = "Other materials"
+    channels= [(16,5),(4,3),(15,2),(3,1),(15,5)]
+    positions=["Ref","1-3","2-3",  "2-2","3-2"]
+    legtype = "mat"
+    graphlabel = ["Ref","SCSN81-F","SCSN81-F","EJ260-S","EJ200-S"]    
+
+    
 
 ### Map from position index to radius from beamline
     
@@ -246,6 +308,25 @@ dose_map = {"3-3":0.57,"3-2":0.61,"3-1":0.7,
 
     
 
+
+
+
+######## Measure QIE pedestal from run 280646, if needed to perform shunt correction #####
+qie_currents = []
+if fixshunt:
+    pedFileName = "hists/hists_280646.root"
+    pedFile = ROOT.TFile(pedFileName,"READ")
+    for fiber,channel in channels:
+        print "Getting hist "+histname+str(fiber-2)+"_iphi"+str(channel) 
+        hist = pedFile.Get("h1_energy_const_ieta"+str(fiber-2)+"_iphi"+str(channel))
+        print "Mean of raw hist: ",hist.GetMean()
+        ##Find location of 0 SPE peak, and restrict range to 2 before and 2 after peak
+        maxbin = hist.GetMaximumBin()
+        hist.GetXaxis().SetRange(maxbin-2,maxbin+2)
+        qie_currents.append(hist.GetMean()/8.) ### store in fC/25 ns
+        print "Mean of 0 SPE peak: ", hist.GetMean()
+
+        
 leg_y_start = 0.63
 if len(channels) <=2: leg_y_start = 0.7
 
@@ -271,8 +352,9 @@ for run in runlist:
         mean = hist.GetMean()
         error = hist.GetMeanError()
         rms = hist.GetRMS()
-        uf = float(hist.GetBinContent(0))/hist.GetEntries()
-        if "const" in histname: ### this indicates pedestal run, divide by 8 to convert to single TS value
+        if hist.GetEntries()>0: uf = float(hist.GetBinContent(0))/hist.GetEntries()
+        else: uf = 0.
+        if "_const" in histname: ### this indicates pedestal run, divide by 8 to convert to single TS value
             mean = 0.125*mean
             error = 0.125*error
             rms = 0.125*rms
@@ -308,8 +390,9 @@ for i,fiber in enumerate(channels):
         thiserr = v_error[j][i]
         if ((not laser) and fixshunt):
             if shunted[j] == 1:
-               thismean = shuntval*(thismean - 18.75)+18.75
-               thiserr = thiserr*shuntval
+              # thismean = shuntval*(thismean - qie_currents[i])+qie_currents[i]
+              thismean = shuntval*(thismean - 18.75)+18.75
+              thiserr = thiserr*shuntval
 
         y.append(thismean)    
         if thismean > max: max=v_mean[j][i]
@@ -328,6 +411,8 @@ c = ROOT.TCanvas()
 c.SetGridy()
 if laser:
     leg = ROOT.TLegend(0.47,leg_y_start,0.89,0.88)
+elif recovery:
+    leg = ROOT.TLegend(0.64,leg_y_start,0.89,0.88)
 else:
     leg = ROOT.TLegend(0.14,0.6,0.37,0.88)
 
@@ -339,7 +424,10 @@ for i,graph in enumerate(graphs):
     graph.SetMinimum(0)
    # if "const" in histname:
     if laser: max = 2* max
+    #elif recovery: max=350
     else: max = 300
+
+    if laser and recovery: graph.GetXaxis().SetLimits(0,40)
     graph.SetMaximum(max)
     graph.SetLineColor(colors[i])
     graph.SetMarkerColor(colors[i])
@@ -347,6 +435,7 @@ for i,graph in enumerate(graphs):
     graph.SetMarkerStyle(20)
     if ifb: graph.SetTitle(title+"; Integrated Luminosity [fb^{-1}]; Average charge [fC]")
     else: graph.SetTitle(title+"; Integrated Dose [Mrad]; Average charge [fC]")
+    if recovery: graph.SetTitle(title+"; Time elapsed since end of pp collisions [days]; Average charge [fC]")
     #leg.AddEntry(graph, "Chan. "+str(channels[i])+", position: "+positions[i],"EP")
     #if "const" in histname:
      #   leg.AddEntry(graph, "Chan. "+str(channels[i]),"EP")
@@ -367,9 +456,12 @@ for i,graph in enumerate(graphs):
     if i==0: graph.Draw("AELPZ")
     else: graph.Draw("ELPZ same")
 
-leg.Draw()       
-if ifb: c.Print("doseplots/"+outname+"_"+name+"_vs_lumi.pdf")
-else: c.Print("doseplots/"+outname+"_"+name+"_vs_dose.pdf")
+leg.Draw()
+if recovery:
+     c.Print("doseplots/recovery_"+outname+"_"+name+"_vs_days.pdf")
+else:           
+    if ifb: c.Print("doseplots/"+outname+"_"+name+"_vs_lumi.pdf")
+    else: c.Print("doseplots/"+outname+"_"+name+"_vs_dose.pdf")
 
     
 if not laser: exit()
@@ -385,9 +477,13 @@ for i,graph in enumerate(graphs):
     if i==0: graph.Draw("AELPZ")
     else: graph.Draw("ELPZ same")
 leg.Draw()       
+
+if recovery:
+     c.Print("doseplots/log_recovery_"+outname+"_"+name+"_vs_days.pdf")
+else:
+    if ifb: c.Print("doseplots/log_"+outname+"_"+name+"_vs_lumi.pdf")
+    else: c.Print("doseplots/log_"+outname+"_"+name+"_vs_dose.pdf")
     
-if ifb: c.Print("doseplots/log_"+outname+"_"+name+"_vs_lumi.pdf")
-else: c.Print("doseplots/log_"+outname+"_"+name+"_vs_dose.pdf")
         
 c.Close()
 
@@ -427,7 +523,8 @@ for idx in normidx:
     leg = ROOT.TLegend(0.47,leg_y_start,0.89,0.89)
     leg.SetMargin(0.15)
     for i,graph in enumerate(graphs_norm):
-        if not ifb: graph.GetXaxis().SetLimits(-0.6,6)
+        if not ifb: graph.GetXaxis().SetLimits(-0.6,6.6)
+        if laser and recovery: graph.GetXaxis().SetLimits(0,40)
         graph.SetMinimum(0.02)
         graph.SetMaximum(20)
         graph.SetLineColor(colors[i])
@@ -436,6 +533,7 @@ for idx in normidx:
         graph.SetMarkerStyle(20)
         if ifb: graph.SetTitle(title+"; Integrated Luminosity [fb^{-1}]; Average charge / reference charge")
         else: graph.SetTitle(title+"; Integrated Dose [Mrad]; Average charge / reference charge")     #   graph.SetTitleFont(42);
+        if recovery: graph.SetTitle(title+"; Time elapsed since end of pp collisions [days]; Average charge / reference charge")
         #leg.AddEntry(graph, "Chan. "+str(channels[i])+", position: "+positions[i],"EP")
         if "dist" in legtype:
             if "Ref" not in positions[i]: leg.AddEntry(graph, "R = "+dist_map[positions[i]]+"  "+str(channels[i]),"EP")
@@ -445,9 +543,12 @@ for idx in normidx:
         if i==1: graph.Draw("AELPZ")
         elif i>1: graph.Draw("ELPZ same")
 
-    leg.Draw()       
-    if ifb: c.Print("doseplots/log_"+outname+"_"+name+"_vs_lumi_norm.pdf")
-    else: c.Print("doseplots/log_"+outname+"_"+name+"_vs_dose_norm.pdf")
+    leg.Draw()
+    if recovery:
+        c.Print("doseplots/log_recovery_"+outname+"_"+name+"_vs_days_norm.pdf")
+    else:
+        if ifb: c.Print("doseplots/log_"+outname+"_"+name+"_vs_lumi_norm.pdf")
+        else: c.Print("doseplots/log_"+outname+"_"+name+"_vs_dose_norm.pdf")
     c.Close()
 
     
@@ -476,6 +577,7 @@ for idx in normidx:
             if applycut and v_uf[j][i] > 0.05: continue
            # if v_mean[j][i] < 75:
             #    continue
+            if recovery and j==0: continue
             y.append(yval)
             if yval > max: max = yval
             ey.append(pow(pow(v_error[j][i],2)+pow(v_error[j][idx],2),0.5)/v_mean[j][idx])
@@ -489,12 +591,16 @@ for idx in normidx:
 
         graphs_norm.append(ROOT.TGraphErrors(len(x),array("d",x),array("d",y),array("d",ex),array("d",ey)))
     if "v9" not in outname:
+       # if not recovery:
         leg = ROOT.TLegend(0.47,leg_y_start,0.89,0.89)
+        #else:
+        #leg = ROOT.TLegend(0.53,0.2,0.89,0.45)
     else:
         leg = ROOT.TLegend(0.65,0.65,0.89,0.89)
     leg.SetMargin(0.15)
     for i,graph in enumerate(graphs_norm):
-        if not ifb: graph.GetXaxis().SetLimits(-0.6,6.)
+        if not ifb: graph.GetXaxis().SetLimits(-0.6,6.6)
+        if laser and recovery: graph.GetXaxis().SetLimits(0,40)
         graph.SetMinimum(0)
         graph.SetMaximum(1.15*max)
         graph.SetLineColor(colors[i])
@@ -503,6 +609,8 @@ for idx in normidx:
         graph.SetMarkerStyle(20)
         if ifb: graph.SetTitle(title+"; Integrated Luminosity [fb^{-1}]; Remaining relative brightness")
         else: graph.SetTitle(title+"; Integrated Dose [Mrad]; Remaining relative brightness")
+        if recovery: graph.SetTitle(title+"; Time elapsed since end of pp collisions [days]; Remaining relative brightness")
+
         #   graph.SetTitleFont(42);
         #leg.AddEntry(graph, "Chan. "+str(channels[i])+", position: "+positions[i],"EP")
         if "dist" in legtype:
@@ -517,8 +625,9 @@ for idx in normidx:
    
     c.SetLogy();
     for i,graph in enumerate(graphs_norm):
-        graph.SetMinimum(0.07)
-        if not ifb: graph.GetXaxis().SetLimits(-0.6,6.)
+        graph.SetMinimum(0.03)
+        if not ifb: graph.GetXaxis().SetLimits(-0.6,6.6)
+        if laser and recovery: graph.GetXaxis().SetLimits(0,40)
         #if "far" in name:
          #   graph.SetMinimum(0.15)
         graph.SetMaximum(3)
@@ -530,8 +639,11 @@ for idx in normidx:
         elif i>1: graph.Draw("ELPZ same")
                 
     leg.Draw()
-    if ifb: c.Print("doseplots/log_"+outname+"_"+name+"_vs_lumi_relative_change.pdf")
-    else: c.Print("doseplots/log_"+outname+"_"+name+"_vs_dose_relative_change.pdf")
+    if recovery:
+        c.Print("doseplots/log_recovery_"+outname+"_"+name+"_vs_days_relative_change.pdf")
+    else:
+        if ifb: c.Print("doseplots/log_"+outname+"_"+name+"_vs_lumi_relative_change.pdf")
+        else: c.Print("doseplots/log_"+outname+"_"+name+"_vs_dose_relative_change.pdf")
     c.Close()
 
 

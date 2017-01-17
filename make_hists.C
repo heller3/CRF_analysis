@@ -36,11 +36,11 @@ using namespace std;
 TString inputdir = "/afs/cern.ch/work/r/rheller/CMSSW_8_0_20/src/HCALPFG/HcalTupleMaker/output/";
 bool make_plots=true;
 bool collisions=false;
-int nieta = 20;
-int niphi = 6;
+const int nieta = 20;
+const int niphi = 6;
 const int nsections=20;
 TString runnum;
-
+int peakTS[nieta][niphi];
 
 void plot_pulse(TH1F* h1_vec[],TH1F* h1_ped[], TString type);
 void plot_vs_section(TH1F * h1_vec[][nsections], TString type);
@@ -66,6 +66,7 @@ float energy(vector<float> fC_subt){
  
 }
 
+
 //Find energy using a constant window starting from TS2
 float energy(vector<float> fC_subt, int window){
  
@@ -77,6 +78,38 @@ float energy(vector<float> fC_subt, int window){
   }
   return energy;
 }
+
+//Find energy using a constant window starting from arbitrary TS
+float energy(vector<float> fC_subt, int start, int length){
+ 
+  int min = start;
+  int max = min+length;
+  float energy=0.;
+  if(min<0) min=0;
+  if(max>9) max=9; 
+  for(int i=min;i<max; i++){
+    energy+=fC_subt.at(i);
+  }
+  return energy;
+}
+
+//find energy and time given peak time slice to center
+float time(vector<float> fC_subt, int start, int length){
+  int min = start;
+  int max =min+length;
+  if(min<0) min=0;
+  if(max>9) max=9; 
+  float time=0.;
+  float energy=0.;
+  for(int i=min;i<=max; i++){
+    time+= (i+1)*fC_subt.at(i); // offset index by 1 to avoid problems with i==0, subtract by one later
+    energy+=fC_subt.at(i);
+  }
+  time = time/energy;
+  time -= 1.;
+  return time;
+}
+
 
 //find energy and time using peak time slice, n-1, n+1 and n+2
 float time(vector<float> fC_subt){
@@ -203,7 +236,7 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
   dir->cd();
   TTree *tree = (TTree*)dir->Get("tree");
   int nevents = tree->GetEntries();
-
+  
   cout<< Form("Number of events: %i",nevents)<<endl;
 
 
@@ -255,9 +288,12 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
   TH1F *h1_energy_const4[nieta][niphi]; //Same as h1_energy_const, but uses sum of TS 2-5
   
 
+  TH1F *h1_energy_laserconst[nieta][niphi]; //Window of 4, using constant window adjusted automatically run by run (and channel by channel) to match the laser arrival time (rather than event by event)
+
   TH1F *h1_energy_sections[nieta][niphi][nsections]; //this is filled with the same values as h1_energy_const, but separated into different nsections different periods throughout the run. This is to look for time dependence within one run.
 
   TH1F *h1_timing[nieta][niphi]; //Filled with charge-weighted average (uses peak finding)
+  TH1F *h1_timing_laserconst[nieta][niphi]; //Filled with charge-weighted average, using run-by-run constant window
   
   //The following two are TDC info not used right now
   TH1F *h1_tdc_timing[nieta][niphi]; 
@@ -299,6 +335,11 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 	  h1_timing[ieta][iphi]= new TH1F(Form("h1_timing_ieta%i_iphi%i",ieta,iphi),Form("h1_timing_ieta%i_iphi%i",ieta,iphi), 50, -0.5, 9.5);
 	  h1_timing[ieta][iphi]->Sumw2();
 	  h1_timing[ieta][iphi]->SetTitle(Form("Run %s, Fiber %i, Channel %i; Charge-averaged timing [TS]; Events",runnum.Data(),ieta+2,iphi));
+
+	  h1_timing_laserconst[ieta][iphi]= new TH1F(Form("h1_timing_laserconst_ieta%i_iphi%i",ieta,iphi),Form("h1_timing_laserconst_ieta%i_iphi%i",ieta,iphi), 50, -0.5, 9.5);
+	  h1_timing_laserconst[ieta][iphi]->Sumw2();
+	  h1_timing_laserconst[ieta][iphi]->SetTitle(Form("Run %s, Fiber %i, Channel %i; Charge-averaged timing [TS]; Events",runnum.Data(),ieta+2,iphi));
+	    
 	    
 	  h1_tdc_timing[ieta][iphi]= new TH1F(Form("h1_tdc_timing_ieta%i_iphi%i",ieta,iphi),Form("h1_tdc_timing_ieta%i_iphi%i",ieta,iphi), 50, -0.5, 9.5);
 	  h1_tdc_timing[ieta][iphi]->Sumw2();
@@ -313,6 +354,11 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 	  h1_energy[ieta][iphi]->Sumw2();
 	  h1_energy[ieta][iphi]->SetTitle(Form("Run %s, Fiber %i, Channel %i; Total charge [fC]; Events",runnum.Data(),ieta+2,iphi));
 	  h1_energy[ieta][iphi]->StatOverflows(kTRUE);
+
+	  h1_energy_laserconst[ieta][iphi]= new TH1F(Form("h1_energy_laserconst_ieta%i_iphi%i",ieta,iphi),Form("h1_energy_laserconst_ieta%i_iphi%i",ieta,iphi),enbins,eminx,emaxx);
+	  h1_energy_laserconst[ieta][iphi]->Sumw2();
+	  h1_energy_laserconst[ieta][iphi]->SetTitle(Form("Run %s, Fiber %i, Channel %i; Total charge, constant window [fC]; Events",runnum.Data(),ieta+2,iphi));
+	  h1_energy_laserconst[ieta][iphi]->StatOverflows(kTRUE);
 
 	  h1_energy_const[ieta][iphi]= new TH1F(Form("h1_energy_const_ieta%i_iphi%i",ieta,iphi),Form("h1_energy_const_ieta%i_iphi%i",ieta,iphi),enbins,eminx,emaxx);
 	  h1_energy_const[ieta][iphi]->Sumw2();
@@ -395,6 +441,54 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
     }
   //End event loop
 
+  //Find peak timeslice for this run
+  
+  for(int ieta=0; ieta<nieta; ieta++) 
+    { 
+      for(int iphi=0; iphi<niphi; iphi++){ 
+	peakTS[ieta][iphi] = h1_fC_ped_subt[ieta][iphi]->GetMaximumBin()-1; //Histogram bin numbers are offset by 1 from vector numbering...
+	if(ieta==14&&iphi==5) cout<<"max is "<<peakTS[ieta][iphi]<<endl;
+      }
+    }
+
+  //Redo event loop to fill the adjusted constant window
+
+ for(int ievent = 0; ievent<nevents; ievent++) 
+    {
+      tree->GetEntry(ievent); 
+      if(calib && laserType==12) continue; //laserType == 12 means the laser fired into CRF during this event. This line is here take only CRF pedetal events in the abort gap.
+
+      //For each event, loop over channels
+      for(unsigned int ichan = 0; ichan<QIE11DigiIEta->size(); ichan++){
+	int ieta =  QIE11DigiIEta->at(ichan);
+	int iphi =  QIE11DigiIPhi->at(ichan);
+	vector<float> QIE11DigiFC_ped_subt;
+
+	//For each channel, loop over all time slices
+        for(unsigned int its = 0; its<QIE11DigiFC->at(ichan).size(); its++){
+	  float fC = QIE11DigiFC->at(ichan).at(its); //raw charge at this TS
+	  int capid = QIE11DigiCapID->at(ichan).at(its); 
+	  float fC_ped_subt = fC - peds[ieta][iphi][capid];
+	  QIE11DigiFC_ped_subt.push_back(fC_ped_subt);
+	
+	}
+
+	//Fill constant-window charge distributions 
+	h1_energy_laserconst[ieta][iphi]->Fill(energy(QIE11DigiFC_ped_subt,peakTS[ieta][iphi]-1,4));
+
+	//fill timing info
+	
+	h1_timing_laserconst[ieta][iphi]->Fill(time(QIE11DigiFC_ped_subt,peakTS[ieta][iphi]-1,4));
+
+      }
+    }
+  //End event loop
+
+
+  
+ 
+
+
   if(calib) nevents = tree->GetEntries("laserType!=12");
 
   //Save histograms to root file, and normalize pulse shapes
@@ -405,9 +499,11 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
         {	  
 	  
 	  h1_timing[ieta][iphi]->Write();
+	  h1_timing_laserconst[ieta][iphi]->Write();
 	  h1_tdc_timing[ieta][iphi]->Write();
 	  h1_delta_timing[ieta][iphi]->Write();
 	  h1_energy[ieta][iphi]->Write();
+	  h1_energy_laserconst[ieta][iphi]->Write();
 	  h1_energy_no_ps[ieta][iphi]->Write();
 	  h1_energy_const[ieta][iphi]->Write();
 	  h1_energy_const_zoom[ieta][iphi]->Write();
@@ -650,10 +746,12 @@ void make_hists(TString runnumber, bool calib=false, bool col=false){
 	//	plot_pulse(h1_fC_ped_subt[ieta],Form("fiber%i",ieta+2));
 	plot_pulse(h1_fC[ieta],h1_ped[ieta],Form("_no_ped_sub_fiber%i",ieta+2));
 	plot_distribution(h1_energy[ieta],ieta, "Energy");
+	plot_distribution(h1_energy_laserconst[ieta],ieta, "Energy_laser");
 	//plot_distribution(h1_energy_no_ps[ieta],ieta, "Energy_no_ped_subt");
 	plot_distribution(h1_energy_const[ieta],ieta, "Energy_const");
 	//plot_distribution(h1_energy_const4[ieta],ieta, "Energy_const4");
        	plot_distribution(h1_timing[ieta],ieta, "Timing");
+ 	plot_distribution(h1_timing_laserconst[ieta],ieta, "Timing_laser");
       }
    
 
@@ -741,7 +839,12 @@ void plot_pulse(TH1F* h1_vec[],TH1F* h1_ped[], TString type)
 	    pad->SetLeftMargin(0.2);
 	    pad->SetBottomMargin(0.2);
 	    pad->SetGrid();
-      
+	    // TLatex *peak = new TLatex(0.7,0.84,Form("Peak TS: %i",));
+	    //peak->SetNDC();
+	    //peak->SetTextSize(textSize);
+ 
+
+	    
 	    h1_vec[iphi]->SetStats(0);
 	    gStyle->SetTitleFontSize(0.1);
 	    h1_vec[iphi]->GetXaxis()->SetTitleSize(0.07);
