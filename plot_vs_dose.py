@@ -290,7 +290,20 @@ if variation==19:
     legtype = "mat"
     graphlabel = ["Ref","SCSN81-F","SCSN81-F","EJ260-S","EJ200-S"]    
 
-    
+if variation==20:
+    name="scsnvar"
+    title="SCSN81-S channels"
+    channels= [(16,5),(14,4),(15,4),(20,4),(20,1),(3,0)]
+    positions=["Ref","3-1" ,"3-1","2-2" ,"1-1" ,"1-1"]    
+    graphlabel = ["","","","","",""]
+
+if variation==21:
+    name="othervar"
+    title = "Other materials"
+    channels= [(16,5),(4,3),(15,2),(3,1),(18,5)]
+    positions=["Ref" ,"1-3","2-3" ,"2-2","1-1"]
+    legtype = "mat"
+    graphlabel = ["Ref","SCSN81-F","SCSN81-F","EJ260-S","EJ200-S"]   
 
 ### Map from position index to radius from beamline
     
@@ -635,6 +648,65 @@ for idx in normidx:
          #   if i==0: graph.Draw("AELPZ")
           #  else: graph.Draw("ELPZ same")
         #else:
+        if not ifb and ("mat" in legtype or variation >= 19):
+            graph.SetLineStyle(2)
+            if "Ref" in graphlabel[i]: continue 
+            f1 = ROOT.TF1("f"+str(i),"expo",0,6.3)
+            f1.SetLineColor(colors[i])
+            f2 = ROOT.TF1("f2"+str(i),"expo",0,6.3)
+            f2.SetLineColor(colors[i])
+            f2.SetLineStyle(7)
+            #f1.FixParameter(0,0.)
+            #f1.FixParameter(4,0.)
+            gclone = graph.Clone()
+            gclone.Fit("f2"+str(i),"R")
+
+            #if i==1: gclone.Draw("AELPZ")
+            #elif i>1:  gclone.Draw("ELPZ same")
+            
+           # if i>0: gclone.Draw("ELPZ same")
+           
+            print "All points, fit parameter = "+str(f2.GetParameter(1))+" +/- "+str(f2.GetParError(1))
+            doseconstant_allpoints=0
+            if abs(f2.GetParameter(1)) > 0:
+                doseconstant_allpoints= -1./f2.GetParameter(1)
+                
+            graph.RemovePoint(0)
+            graph.Fit("f"+str(i),"R")
+            f1.Draw("same")
+            print "Remove first point, fit parameter = "+str(f1.GetParameter(1))+" +/- "+str(f1.GetParError(1))
+            doseconstant=0
+            doseconstant_unc=0
+            if abs(f1.GetParameter(1)) > 0:
+                doseconstant= -1./f1.GetParameter(1)
+                doseconstant_unc= abs(doseconstant-doseconstant_allpoints)
+                #doseconstant_unc= (0.2 + abs(f1.GetParError(1)/f1.GetParameter(1)) )/abs(f1.GetParameter(1))
+                print "Dose constant = "+str(doseconstant)+" +/- "+str(doseconstant_unc)
+
+            ##store dose constant in text file
+            ##open old text file database. and copy through to new text file, looking for line corresponding to this channel
+            ## if old line is found, replace it with new line
+            ## else, add new line at end.
+            
+            outFile = open("DoseConstants_new.txt","w")
+            try:
+                with open("DoseConstants.txt") as channelrows:
+                    for channelrow in channelrows:
+                        if str(channels[i]) not in channelrow:
+                            outFile.write(channelrow)
+            except:
+                print "Starting new DoseConstants.txt file"
+            print "Adding channel ",str(channels[i])
+            dose_rate = 15.9*0.25*dose_map[positions[i]]
+            if "Ref" not in positions[i]: 
+                beamdist = dist_map[positions[i]]
+                outFile.write("%s\t%s\t%s\t%s\t%s\t%s\t%s" %(graphlabel[i],str(channels[i]),beamdist,str(doseconstant),str(doseconstant_unc),str(dose_rate),str(0.15*dose_rate)+"\n"))                    
+            
+            try: os.remove("DoseConstants.txt")
+            except: print "Creating new file"
+            os.rename("DoseConstants_new.txt", "DoseConstants.txt")
+
+        
         if i==1: graph.Draw("AELPZ")
         elif i>1: graph.Draw("ELPZ same")
                 
